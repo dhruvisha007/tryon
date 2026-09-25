@@ -1,0 +1,11 @@
+runpod>=1.7.0
+# Qwen-Image-Edit-2511 needs QwenImageEditPlusPipeline, which is only in
+# diffusers >= 0.36 (not yet on PyPI at time of writing).
+git+https://github.com/huggingface/diffusers.git@main
+transformers>=4.57.0
+accelerate>=1.2.0
+safetensors>=0.4.5
+peft>=0.14.0
+sentencepiece>=0.2.0
+pillow>=10.4.0
+requests>=2.32.0
