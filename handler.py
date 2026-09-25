@@ -130,6 +130,18 @@ def handler(job):
     try:
         inp = job.get("input") or {}
 
+        # Warm-up ping. Laravel sends this when it finds the endpoint cold: it
+        # spins a worker up and loads the model for the NEXT customer, without
+        # paying for a generation. That customer is served by ModelsLab instead
+        # of waiting a minute-plus on our cold start.
+        if inp.get("warmup"):
+            load_pipeline()
+            return {
+                "status": "success",
+                "warmed": True,
+                "seconds": round(time.time() - started, 2),
+            }
+
         # init_image mirrors ModelsLab: [clothing, person] for a try-on,
         # [result] for an angle regeneration.
         images_in = inp.get("init_image") or inp.get("images") or []
