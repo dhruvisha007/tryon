@@ -95,6 +95,30 @@ def fit(img: Image.Image, max_side: int) -> Image.Image:
     return img.resize((nw, nh), Image.LANCZOS)
 
 
+BG_SESSION = None
+
+
+def strip_background(img: Image.Image) -> Image.Image:
+    """
+    Flatten a garment photo onto plain white.
+
+    Qwen-Image-Edit pulls scene context out of BOTH reference images, so a product
+    shot taken in a styled room drags that room into the result and the person's
+    own background disappears - the exact defect the live ModelsLab output has.
+    Give it a garment on white and there is no competing scene to copy.
+    """
+    global BG_SESSION
+    from rembg import new_session, remove
+
+    if BG_SESSION is None:
+        BG_SESSION = new_session("u2net")
+
+    cut = remove(img, session=BG_SESSION)          # RGBA, garment isolated
+    white = Image.new("RGBA", cut.size, (255, 255, 255, 255))
+    white.alpha_composite(cut)
+    return white.convert("RGB")
+
+
 def to_data_uri(img: Image.Image, fmt: str = "JPEG", quality: int = 92) -> str:
     buf = io.BytesIO()
     img.save(buf, format=fmt, quality=quality)
@@ -128,6 +152,17 @@ def handler(job):
 
         images = [fit(load_image(s), max_side) for s in images_in]
 
+        # Only meaningful on a two-image try-on, where image 1 is the garment.
+        # Off by default so we can A/B it against the current behaviour.
+        strip_bg = bool(inp.get("strip_bg", False))
+        if strip_bg and len(images) > 1:
+            try:
+                images[0] = strip_background(images[0])
+            except Exception as e:
+                # A failed cutout must not fail the try-on - fall back to the
+                # original garment photo and carry on.
+                print(f"[worker] strip_bg failed, using original: {e}", flush=True)
+
         # Output keeps the person's frame. Image 2 is the person on a two-image
         # try-on; with a single image that image is the subject.
         ref = images[1] if len(images) > 1 else images[0]
@@ -159,6 +194,7 @@ def handler(job):
                 "cfg": cfg,
                 "size": [width, height],
                 "inputs": len(images),
+                "strip_bg": strip_bg,
                 "seed": seed,
                 "generate_seconds": round(gen_secs, 2),
                 "total_seconds": round(time.time() - started, 2),
