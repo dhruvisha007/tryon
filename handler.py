@@ -60,6 +60,18 @@ def load_pipeline():
         pipe.to("cuda")
 
     pipe.set_progress_bar_config(disable=True)
+
+    # Build the background-removal session here too. Creating it costs ~30s of
+    # one-off ONNX setup, and measured on a fresh worker that lands entirely on
+    # the first customer's request - 39s instead of 8s. Paying it during boot
+    # means every request sees the warm path.
+    try:
+        t1 = time.time()
+        strip_background(Image.new("RGB", (64, 64), (255, 255, 255)))
+        print(f"[worker] bg session ready in {time.time() - t1:.1f}s", flush=True)
+    except Exception as e:
+        print(f"[worker] bg session warm failed, first strip will be slow: {e}", flush=True)
+
     print(f"[worker] pipeline ready in {time.time() - t0:.1f}s "
           f"(lora={USE_LORA}, offload={OFFLOAD})", flush=True)
 
