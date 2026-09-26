@@ -95,6 +95,12 @@ def fit(img: Image.Image, max_side: int) -> Image.Image:
     return img.resize((nw, nh), Image.LANCZOS)
 
 
+# u2netp is the lightweight u2net - far quicker on CPU and plenty accurate for
+# a garment on a product-shot background. BG_MASK_SIDE caps the resolution the
+# cutout is computed at.
+BG_MODEL     = os.getenv("BG_MODEL", "u2netp")
+BG_MASK_SIDE = int(os.getenv("BG_MASK_SIDE", "512"))
+
 BG_SESSION = None
 
 
@@ -111,12 +117,21 @@ def strip_background(img: Image.Image) -> Image.Image:
     from rembg import new_session, remove
 
     if BG_SESSION is None:
-        BG_SESSION = new_session("u2net")
+        BG_SESSION = new_session(BG_MODEL)
 
-    cut = remove(img, session=BG_SESSION)          # RGBA, garment isolated
-    white = Image.new("RGBA", cut.size, (255, 255, 255, 255))
-    white.alpha_composite(cut)
-    return white.convert("RGB")
+    # Measured: full-size u2net on CPU cost 30.4s against 7.9s of generation -
+    # four times the actual work. The mask only has to find the garment's
+    # outline, so compute it small and scale it back up. Texture comes from the
+    # original pixels, which are untouched.
+    small = img.copy()
+    small.thumbnail((BG_MASK_SIDE, BG_MASK_SIDE), Image.LANCZOS)
+
+    cut  = remove(small, session=BG_SESSION)                       # RGBA
+    mask = cut.getchannel("A").resize(img.size, Image.LANCZOS)
+
+    white = Image.new("RGB", img.size, (255, 255, 255))
+    white.paste(img, mask=mask)
+    return white
 
 
 def to_data_uri(img: Image.Image, fmt: str = "JPEG", quality: int = 92) -> str:
