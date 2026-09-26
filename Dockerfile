@@ -26,6 +26,14 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt hf_transfer
 
+# Bake the background-removal model into the image. Downloaded at runtime it
+# costs ~30s on the first strip_bg call of EVERY new worker - measured at 30.5s
+# against 8.5s of actual generation. Baked, it is on disk before the container
+# even starts.
+ENV U2NET_HOME=/opt/u2net
+RUN python -c "from rembg import new_session; new_session('u2net')" \
+    && du -sh /opt/u2net
+
 COPY handler.py .
 
 CMD ["python", "-u", "handler.py"]
