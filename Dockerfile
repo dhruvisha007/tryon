@@ -31,7 +31,7 @@ RUN pip install --no-cache-dir -r requirements.txt hf_transfer
 # against 8.5s of actual generation. Baked, it is on disk before the container
 # even starts.
 ENV U2NET_HOME=/opt/u2net
-RUN python -c "from rembg import new_session; new_session('u2net')" \
+RUN python -c "from rembg import new_session; new_session('u2netp'); new_session('u2net')" \
     && du -sh /opt/u2net
 
 COPY handler.py .
