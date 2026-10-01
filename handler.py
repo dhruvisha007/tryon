@@ -239,11 +239,12 @@ def handler(job):
         }
 
 
-if __name__ == "__main__":
-    if os.getenv("PRELOAD", "1") == "1":
-        try:
-            load_pipeline()
-        except Exception:
-            traceback.print_exc()
+if os.getenv("PRELOAD", "1") == "1":
+    try:
+        load_pipeline()
+    except Exception:
+        traceback.print_exc()
 
-    runpod.serverless.start({"handler": handler})
+runpod.serverless.start({
+    "handler": handler
+})

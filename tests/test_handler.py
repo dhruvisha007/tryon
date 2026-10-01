@@ -1,7 +1,10 @@
 import base64
 import unittest
+import sys
 from unittest.mock import patch, MagicMock
 
+# Mock runpod before importing handler to prevent serverless.start from blocking
+sys.modules['runpod'] = MagicMock()
 import handler
 
 class TestHandler(unittest.TestCase):
