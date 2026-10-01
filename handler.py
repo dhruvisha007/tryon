@@ -65,16 +65,31 @@ def load_pipeline():
     
     use_auth_token = os.getenv("HF_TOKEN") is not None
     
-    pipe = QwenImageEditPlusPipeline.from_pretrained(
-        MODEL_ID, 
-        torch_dtype=torch.bfloat16, 
-        cache_dir=MODEL_DIR,
-        use_auth_token=use_auth_token
-    )
+    try:
+        logger.info("Attempting to load model from local cache...")
+        pipe = QwenImageEditPlusPipeline.from_pretrained(
+            MODEL_ID, 
+            torch_dtype=torch.bfloat16, 
+            cache_dir=MODEL_DIR,
+            use_auth_token=use_auth_token,
+            local_files_only=True
+        )
+    except Exception as e:
+        logger.info(f"Local cache miss, downloading model... ({e})")
+        pipe = QwenImageEditPlusPipeline.from_pretrained(
+            MODEL_ID, 
+            torch_dtype=torch.bfloat16, 
+            cache_dir=MODEL_DIR,
+            use_auth_token=use_auth_token,
+            local_files_only=False
+        )
 
     if USE_LORA:
         logger.info(f"Loading LoRA from {LORA_REPO} ({LORA_FILE})")
-        pipe.load_lora_weights(LORA_REPO, weight_name=LORA_FILE, cache_dir=MODEL_DIR, use_auth_token=use_auth_token)
+        try:
+            pipe.load_lora_weights(LORA_REPO, weight_name=LORA_FILE, cache_dir=MODEL_DIR, use_auth_token=use_auth_token, local_files_only=True)
+        except Exception:
+            pipe.load_lora_weights(LORA_REPO, weight_name=LORA_FILE, cache_dir=MODEL_DIR, use_auth_token=use_auth_token, local_files_only=False)
         pipe.fuse_lora()
         pipe.unload_lora_weights()
 
