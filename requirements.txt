@@ -1,7 +1,8 @@
 runpod>=1.7.0
-# Qwen-Image-Edit-2511 needs QwenImageEditPlusPipeline, which is only in
-# diffusers >= 0.36 (not yet on PyPI at time of writing).
-git+https://github.com/huggingface/diffusers.git@main
+# QwenImageEditPlusPipeline requires diffusers>=0.36 (not yet on PyPI).
+# Pinned to a known-good SHA that includes QwenImageEditPlusPipeline and
+# requires torch>=2.6.0 (torch.accelerator) — matched by our base image.
+git+https://github.com/huggingface/diffusers.git@7997e4eabb1f880fa5697e2b24de09a892fffad5
 transformers>=4.57.0
 accelerate>=1.2.0
 safetensors>=0.4.5
