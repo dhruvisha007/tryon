@@ -240,10 +240,7 @@ def handler(job):
 
 
 if os.getenv("PRELOAD", "1") == "1":
-    try:
-        load_pipeline()
-    except Exception:
-        traceback.print_exc()
+    load_pipeline()
 
 runpod.serverless.start({
     "handler": handler
