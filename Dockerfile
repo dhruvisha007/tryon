@@ -1,6 +1,6 @@
 # runpod/pytorch is pre-cached on all RunPod nodes - image pull is near-instant.
-# PyTorch 2.4.0, Python 3.11, CUDA 12.4, cuDNN 9 are already installed.
-FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
+# PyTorch 2.6.0, Python 3.11, CUDA 12.4 — required by diffusers>=0.36 (torch.accelerator).
+FROM runpod/pytorch:2.6.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
