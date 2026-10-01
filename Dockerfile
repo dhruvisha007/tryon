@@ -1,19 +1,11 @@
-FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+# runpod/pytorch is pre-cached on all RunPod nodes - image pull is near-instant.
+# PyTorch 2.4.0, Python 3.11, CUDA 12.4, cuDNN 9 are already installed.
+FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     HF_HOME=/runpod-volume/huggingface
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        python3.10 python3.10-dev python3-pip git \
-    && rm -rf /var/lib/apt/lists/* \
-    && ln -sf /usr/bin/python3.10 /usr/bin/python
-
-# Install torch from the cu124 index FIRST.
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir torch torchvision \
-       --index-url https://download.pytorch.org/whl/cu124
 
 WORKDIR /app
 COPY requirements.txt .
