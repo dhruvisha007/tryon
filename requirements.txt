@@ -1,9 +1,5 @@
 runpod>=1.7.0
-# Upgrade torch to 2.6.0+cu124 — the base image ships torch 2.4.0, but
-# diffusers>=0.36 requires torch>=2.6.0 (torch.accelerator API).
---extra-index-url https://download.pytorch.org/whl/cu124
-torch==2.6.0+cu124
-torchvision==0.21.0+cu124
+# torch 2.6.0+cu124 is installed as a separate Dockerfile step before this file.
 # QwenImageEditPlusPipeline requires diffusers>=0.36 (not yet on PyPI).
 # Pinned to a known-good SHA that includes QwenImageEditPlusPipeline and
 # requires torch>=2.6.0 (torch.accelerator) — matched by our base image.
