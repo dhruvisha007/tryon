@@ -6,7 +6,8 @@ FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    HF_HOME=/runpod-volume/huggingface
+    HF_HOME=/runpod-volume/huggingface \
+    HF_HUB_ENABLE_HF_TRANSFER=0
 
 WORKDIR /app
 COPY requirements.txt .
