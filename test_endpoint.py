@@ -8,10 +8,10 @@ import time
 # CONFIGURATION
 # ==========================================
 # 1. Replace with your actual RunPod Endpoint ID (e.g. from https://www.runpod.io/console/serverless)
-ENDPOINT_ID = "YOUR_ENDPOINT_ID"
+ENDPOINT_ID = ""
 
 # 2. Replace with your RunPod API Key (or set it in your environment variables)
-RUNPOD_API_KEY = os.getenv("RUNPOD_API_KEY", "YOUR_RUNPOD_API_KEY")
+RUNPOD_API_KEY = os.getenv("RUNPOD_API_KEY", "")
 
 # 3. Path to the image you want to edit
 IMAGE_PATH = "test_image.jpg" # You can change this or place a test_image.jpg in this folder
