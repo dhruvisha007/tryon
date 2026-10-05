@@ -23,10 +23,9 @@ LORA_REPO = os.getenv("LORA_REPO", "lightx2v/Qwen-Image-Edit-2511-Lightning")
 LORA_FILE = os.getenv("LORA_FILE", "Qwen-Image-Edit-2511-Lightning-8steps-V1.0-bf16.safetensors")
 
 USE_LORA = os.getenv("USE_LORA", "1") == "1"
-OFFLOAD = os.getenv("OFFLOAD", "1") == "1"
 
 DEFAULT_STEPS = int(os.getenv("DEFAULT_STEPS", "8"))
-DEFAULT_CFG   = float(os.getenv("DEFAULT_CFG", "1.0"))
+DEFAULT_CFG   = float(os.getenv("DEFAULT_CFG", "1.5"))
 MAX_SIDE      = int(os.getenv("MAX_SIDE", "1024"))
 FETCH_TIMEOUT = int(os.getenv("FETCH_TIMEOUT", "30"))
 
@@ -73,7 +72,8 @@ def load_pipeline():
             cache_dir=MODEL_DIR,
             use_auth_token=use_auth_token,
             local_files_only=True,
-            use_safetensors=True
+            use_safetensors=True,
+            attn_implementation="flash_attention_2"
         )
     except Exception as e:
         logger.info(f"Local cache miss, downloading model... ({e})")
@@ -83,7 +83,8 @@ def load_pipeline():
             cache_dir=MODEL_DIR,
             use_auth_token=use_auth_token,
             local_files_only=False,
-            use_safetensors=True
+            use_safetensors=True,
+            attn_implementation="flash_attention_2"
         )
 
     if USE_LORA:
@@ -95,15 +96,8 @@ def load_pipeline():
         pipe.fuse_lora()
         pipe.unload_lora_weights()
 
-    if OFFLOAD:
-        logger.info("Enabling sequential CPU offload and VAE slicing/tiling")
-        pipe.enable_sequential_cpu_offload()
-        if hasattr(pipe, "vae") and pipe.vae is not None:
-            pipe.vae.enable_tiling()
-            pipe.vae.enable_slicing()
-    else:
-        logger.info("Moving model to CUDA")
-        pipe.to("cuda")
+    logger.info("Moving model to CUDA (No CPU Offload)")
+    pipe.to("cuda")
 
     pipe.set_progress_bar_config(disable=True)
 
@@ -225,6 +219,7 @@ def handler(job):
                 prompt=prompt,
                 negative_prompt=negative,
                 num_inference_steps=steps,
+                guidance_scale=cfg,
                 true_cfg_scale=cfg,
                 width=width,
                 height=height,
