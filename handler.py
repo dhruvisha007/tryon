@@ -96,8 +96,11 @@ def load_pipeline():
         pipe.unload_lora_weights()
 
     if OFFLOAD:
-        logger.info("Enabling model CPU offload")
-        pipe.enable_model_cpu_offload()
+        logger.info("Enabling sequential CPU offload and VAE slicing/tiling")
+        pipe.enable_sequential_cpu_offload()
+        if hasattr(pipe, "vae") and pipe.vae is not None:
+            pipe.vae.enable_tiling()
+            pipe.vae.enable_slicing()
     else:
         logger.info("Moving model to CUDA")
         pipe.to("cuda")
@@ -213,6 +216,8 @@ def handler(job):
 
         logger.info("Inference start")
         gen_started = time.time()
+        
+        torch.cuda.empty_cache()
         
         with torch.inference_mode():
             result = pipe(
