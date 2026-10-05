@@ -72,7 +72,8 @@ def load_pipeline():
             torch_dtype=torch.bfloat16, 
             cache_dir=MODEL_DIR,
             use_auth_token=use_auth_token,
-            local_files_only=True
+            local_files_only=True,
+            use_safetensors=True
         )
     except Exception as e:
         logger.info(f"Local cache miss, downloading model... ({e})")
@@ -81,7 +82,8 @@ def load_pipeline():
             torch_dtype=torch.bfloat16, 
             cache_dir=MODEL_DIR,
             use_auth_token=use_auth_token,
-            local_files_only=False
+            local_files_only=False,
+            use_safetensors=True
         )
 
     if USE_LORA:
