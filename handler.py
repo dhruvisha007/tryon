@@ -24,8 +24,27 @@ LORA_FILE = os.getenv("LORA_FILE", "Qwen-Image-Edit-2511-Lightning-8steps-V1.0-b
 
 USE_LORA = os.getenv("USE_LORA", "1") == "1"
 
-DEFAULT_STEPS = int(os.getenv("DEFAULT_STEPS", "8"))
+# Step count must match the LoRA. Running the 4-step LoRA at 8 steps, or the
+# 8-step one at 4, degrades output badly and silently - so derive the default
+# from the filename unless DEFAULT_STEPS is set explicitly.
+#
+# Halving steps roughly halves generation time AND cost, since serverless bills
+# per second. On a slow card that is the difference between ~30s and ~15s.
+def _steps_from_lora(name: str, fallback: int = 8) -> int:
+    for n in (4, 8):
+        if f"{n}steps" in name.lower():
+            return n
+    return fallback
+
+
+DEFAULT_STEPS = int(os.getenv("DEFAULT_STEPS") or _steps_from_lora(LORA_FILE))
+# Lightning LoRAs are DISTILLED FOR CFG 1.0. Above that they degrade visibly -
+# worth A/B-ing 1.0 against the current 1.5 on a fixed seed.
 DEFAULT_CFG   = float(os.getenv("DEFAULT_CFG", "1.5"))
+
+# Denoising cost scales with pixel count, so 768 instead of 1024 is roughly
+# 1.8x less work - and on serverless, which bills per second, 1.8x less money.
+# Upscaling the result afterwards is far cheaper than generating big.
 MAX_SIDE      = int(os.getenv("MAX_SIDE", "1024"))
 FETCH_TIMEOUT = int(os.getenv("FETCH_TIMEOUT", "30"))
 
