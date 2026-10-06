@@ -12,7 +12,7 @@ import logging
 import requests
 import runpod
 import torch
-from diffusers import QwenImageEditPlusPipeline
+from diffusers import QwenImageEditPlusPipeline, Qwen2_5_VLImageEditTransformer
 from PIL import Image, ImageOps
 
 logger = logging.getLogger(__name__)
@@ -66,8 +66,18 @@ def load_pipeline():
     
     try:
         logger.info("Attempting to load model from local cache...")
+        transformer = Qwen2_5_VLImageEditTransformer.from_pretrained(
+            MODEL_ID,
+            subfolder="transformer",
+            torch_dtype=torch.float8_e4m3fn,
+            cache_dir=MODEL_DIR,
+            use_auth_token=use_auth_token,
+            local_files_only=True,
+            use_safetensors=True,
+        )
         pipe = QwenImageEditPlusPipeline.from_pretrained(
             MODEL_ID, 
+            transformer=transformer,
             torch_dtype=torch.bfloat16, 
             cache_dir=MODEL_DIR,
             use_auth_token=use_auth_token,
@@ -77,8 +87,18 @@ def load_pipeline():
         )
     except Exception as e:
         logger.info(f"Local cache miss, downloading model... ({e})")
+        transformer = Qwen2_5_VLImageEditTransformer.from_pretrained(
+            MODEL_ID,
+            subfolder="transformer",
+            torch_dtype=torch.float8_e4m3fn,
+            cache_dir=MODEL_DIR,
+            use_auth_token=use_auth_token,
+            local_files_only=False,
+            use_safetensors=True,
+        )
         pipe = QwenImageEditPlusPipeline.from_pretrained(
             MODEL_ID, 
+            transformer=transformer,
             torch_dtype=torch.bfloat16, 
             cache_dir=MODEL_DIR,
             use_auth_token=use_auth_token,
@@ -96,8 +116,8 @@ def load_pipeline():
         pipe.fuse_lora()
         pipe.unload_lora_weights()
 
-    logger.info("Moving model to CUDA (No CPU Offload)")
-    pipe.to("cuda")
+    logger.info("Enabling model CPU offload")
+    pipe.enable_model_cpu_offload()
 
     pipe.set_progress_bar_config(disable=True)
 
