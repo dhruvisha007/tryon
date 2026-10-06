@@ -31,6 +31,23 @@ FETCH_TIMEOUT = int(os.getenv("FETCH_TIMEOUT", "30"))
 
 MODEL_DIR = os.getenv("MODEL_DIR", None)
 
+# Shrink the transformer so the pipeline fits a smaller card with BOTH the
+# transformer and the text encoder resident - no CPU offload (measured: offload
+# on 48GB times out, staging ~60GB through system RAM thrashes).
+#
+#   none   transformer 40GB + encoder 16GB + ~5GB = ~61GB  -> needs 80GB+
+#   fp8    transformer 20GB + encoder 16GB + ~5GB = ~41GB  -> fits 48GB
+#   int8   similar to fp8, and runs on Ampere too
+#   nf4    transformer ~11GB                      = ~32GB  -> fits 40GB
+#
+# The text encoder CANNOT be dropped or precomputed: Qwen-Image-EDIT encodes the
+# prompt together with the input images (encode_prompt takes image=), so the
+# embeddings differ for every customer's photos.
+#
+# fp8 (torchao) needs Ada/Blackwell, sm_89+. On Ampere (A40/A6000) use int8/nf4.
+QUANT         = os.getenv("QUANT", "none").lower()
+QUANT_ENCODER = os.getenv("QUANT_ENCODER", "0") == "1"
+
 PIPE = None
 
 BG_MODEL     = os.getenv("BG_MODEL", "u2netp")
@@ -53,6 +70,41 @@ def strip_background(img: Image.Image) -> Image.Image:
     return white
 
 
+def build_quant_config():
+    """Quantisation config for from_pretrained, or None when QUANT=none."""
+    if QUANT == "none":
+        return None
+
+    from diffusers import PipelineQuantizationConfig
+
+    targets = ["transformer"] + (["text_encoder"] if QUANT_ENCODER else [])
+
+    if QUANT == "fp8":
+        return PipelineQuantizationConfig(
+            quant_backend="torchao",
+            quant_kwargs={"quant_type": "float8dq_e4m3_row"},
+            components_to_quantize=targets,
+        )
+
+    if QUANT in ("int8", "nf4"):
+        kw = (
+            {"load_in_8bit": True}
+            if QUANT == "int8"
+            else {
+                "load_in_4bit": True,
+                "bnb_4bit_quant_type": "nf4",
+                "bnb_4bit_compute_dtype": torch.bfloat16,
+            }
+        )
+        return PipelineQuantizationConfig(
+            quant_backend="bitsandbytes_8bit" if QUANT == "int8" else "bitsandbytes_4bit",
+            quant_kwargs=kw,
+            components_to_quantize=targets,
+        )
+
+    raise ValueError(f"unknown QUANT={QUANT!r} (expected none|fp8|int8|nf4)")
+
+
 def load_pipeline():
     """Load once per container, not per request. Cold start pays this; warm calls don't."""
     global PIPE
@@ -63,17 +115,22 @@ def load_pipeline():
     t0 = time.time()
     
     use_auth_token = os.getenv("HF_TOKEN") is not None
-    
+
+    quant_cfg = build_quant_config()
+    if quant_cfg is not None:
+        logger.info(f"Quantising with QUANT={QUANT} (encoder={QUANT_ENCODER})")
+
     try:
         logger.info("Attempting to load model from local cache...")
         pipe = QwenImageEditPlusPipeline.from_pretrained(
-            MODEL_ID, 
-            torch_dtype=torch.bfloat16, 
+            MODEL_ID,
+            torch_dtype=torch.bfloat16,
             cache_dir=MODEL_DIR,
             use_auth_token=use_auth_token,
             local_files_only=True,
             use_safetensors=True,
-            attn_implementation="flash_attention_2"
+            attn_implementation="flash_attention_2",
+            quantization_config=quant_cfg
         )
     except Exception as e:
         logger.info(f"Local cache miss, downloading model... ({e})")
@@ -84,7 +141,8 @@ def load_pipeline():
             use_auth_token=use_auth_token,
             local_files_only=False,
             use_safetensors=True,
-            attn_implementation="flash_attention_2"
+            attn_implementation="flash_attention_2",
+            quantization_config=quant_cfg
         )
 
     if USE_LORA:
@@ -93,11 +151,24 @@ def load_pipeline():
             pipe.load_lora_weights(LORA_REPO, weight_name=LORA_FILE, cache_dir=MODEL_DIR, use_auth_token=use_auth_token, local_files_only=True)
         except Exception:
             pipe.load_lora_weights(LORA_REPO, weight_name=LORA_FILE, cache_dir=MODEL_DIR, use_auth_token=use_auth_token, local_files_only=False)
-        pipe.fuse_lora()
-        pipe.unload_lora_weights()
+        # fuse_lora() writes back into the transformer's weights, which
+        # quantised layers reject. Keep the adapter attached instead - a little
+        # slower per step, but the only way to combine LoRA with QUANT.
+        if QUANT == "none":
+            pipe.fuse_lora()
+            pipe.unload_lora_weights()
+        else:
+            logger.info(f"LoRA left unfused (QUANT={QUANT})")
 
     logger.info("Moving model to CUDA (No CPU Offload)")
     pipe.to("cuda")
+
+    if torch.cuda.is_available():
+        free, total = torch.cuda.mem_get_info()
+        logger.info(
+            f"VRAM after load: {(total - free) / 2**30:.1f}GB used of "
+            f"{total / 2**30:.1f}GB (quant={QUANT})"
+        )
 
     pipe.set_progress_bar_config(disable=True)
 
