@@ -27,7 +27,4 @@ RUN python -c "from rembg import new_session; new_session('u2netp'); new_session
     && du -sh /opt/u2net
 
 COPY handler.py .
-COPY fastapi_server.py .
-
-# CMD ["python", "-u", "handler.py"] # RunPod Serverless Handler
-CMD ["uvicorn", "fastapi_server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-u", "handler.py"] # RunPod Serverless Handler
