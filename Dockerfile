@@ -27,4 +27,4 @@ RUN python -c "from rembg import new_session; new_session('u2netp'); new_session
     && du -sh /opt/u2net
 
 COPY handler.py .
-CMD ["python", "-u", "handler.py"] # RunPod Serverless Handler
+CMD ["python", "-u", "handler.py"]
