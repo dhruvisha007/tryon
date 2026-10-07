@@ -116,8 +116,8 @@ def load_pipeline():
         pipe.fuse_lora()
         pipe.unload_lora_weights()
 
-    logger.info("Enabling model CPU offload")
-    pipe.enable_model_cpu_offload()
+    logger.info("Moving model to CUDA (No CPU Offload)")
+    pipe.to("cuda")
 
     pipe.set_progress_bar_config(disable=True)
 
