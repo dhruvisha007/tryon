@@ -70,7 +70,7 @@ def load_pipeline():
         transformer = QwenImageTransformer2DModel.from_pretrained(
             MODEL_ID,
             subfolder="transformer",
-            torch_dtype=torch.float8_e4m3fn,
+            torch_dtype=torch.bfloat16,
             cache_dir=MODEL_DIR,
             use_auth_token=use_auth_token,
             local_files_only=True,
@@ -93,7 +93,7 @@ def load_pipeline():
         transformer = QwenImageTransformer2DModel.from_pretrained(
             MODEL_ID,
             subfolder="transformer",
-            torch_dtype=torch.float8_e4m3fn,
+            torch_dtype=torch.bfloat16,
             cache_dir=MODEL_DIR,
             use_auth_token=use_auth_token,
             local_files_only=False,
@@ -117,9 +117,11 @@ def load_pipeline():
             pipe.load_lora_weights(LORA_REPO, weight_name=LORA_FILE, cache_dir=MODEL_DIR, use_auth_token=use_auth_token, local_files_only=True)
         except Exception:
             pipe.load_lora_weights(LORA_REPO, weight_name=LORA_FILE, cache_dir=MODEL_DIR, use_auth_token=use_auth_token, local_files_only=False)
+        pipe.fuse_lora()
+        pipe.unload_lora_weights()
 
-    logger.info("Moving model to CUDA (No CPU Offload)")
-    pipe.to("cuda")
+    logger.info("Enabling model CPU offload")
+    pipe.enable_model_cpu_offload()
 
     pipe.set_progress_bar_config(disable=True)
 
