@@ -117,8 +117,6 @@ def load_pipeline():
             pipe.load_lora_weights(LORA_REPO, weight_name=LORA_FILE, cache_dir=MODEL_DIR, use_auth_token=use_auth_token, local_files_only=True)
         except Exception:
             pipe.load_lora_weights(LORA_REPO, weight_name=LORA_FILE, cache_dir=MODEL_DIR, use_auth_token=use_auth_token, local_files_only=False)
-        pipe.fuse_lora()
-        pipe.unload_lora_weights()
 
     logger.info("Moving model to CUDA (No CPU Offload)")
     pipe.to("cuda")
