@@ -12,7 +12,7 @@ import logging
 import requests
 import runpod
 import torch
-from diffusers import QwenImageEditPlusPipeline, Qwen2_5_VLImageEditTransformer
+from diffusers import QwenImageEditPlusPipeline, QwenImageTransformer2DModel
 from PIL import Image, ImageOps
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ def load_pipeline():
     try:
         logger.info("Attempting to load model from local cache...")
         torch.set_default_device("cuda")
-        transformer = Qwen2_5_VLImageEditTransformer.from_pretrained(
+        transformer = QwenImageTransformer2DModel.from_pretrained(
             MODEL_ID,
             subfolder="transformer",
             torch_dtype=torch.float8_e4m3fn,
@@ -90,7 +90,7 @@ def load_pipeline():
     except Exception as e:
         logger.info(f"Local cache miss, downloading model... ({e})")
         torch.set_default_device("cuda")
-        transformer = Qwen2_5_VLImageEditTransformer.from_pretrained(
+        transformer = QwenImageTransformer2DModel.from_pretrained(
             MODEL_ID,
             subfolder="transformer",
             torch_dtype=torch.float8_e4m3fn,
