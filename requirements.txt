@@ -18,3 +18,4 @@ onnxruntime>=1.19.0
 fastapi
 uvicorn
 pydantic
+numpy<2.0.0

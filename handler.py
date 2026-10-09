@@ -5,6 +5,7 @@ RunPod serverless worker - Qwen-Image-Edit-2511
 import base64
 import io
 import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 import time
 import traceback
 import logging
@@ -66,7 +67,6 @@ def load_pipeline():
     
     try:
         logger.info("Attempting to load model from local cache...")
-        torch.set_default_device("cuda")
         transformer = QwenImageTransformer2DModel.from_pretrained(
             MODEL_ID,
             subfolder="transformer",
@@ -86,10 +86,8 @@ def load_pipeline():
             use_safetensors=True,
             attn_implementation="flash_attention_2"
         )
-        torch.set_default_device("cpu")
     except Exception as e:
         logger.info(f"Local cache miss, downloading model... ({e})")
-        torch.set_default_device("cuda")
         transformer = QwenImageTransformer2DModel.from_pretrained(
             MODEL_ID,
             subfolder="transformer",
@@ -109,7 +107,6 @@ def load_pipeline():
             use_safetensors=True,
             attn_implementation="flash_attention_2"
         )
-        torch.set_default_device("cpu")
 
     if USE_LORA:
         logger.info(f"Loading LoRA from {LORA_REPO} ({LORA_FILE})")
