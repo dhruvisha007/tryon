@@ -1,7 +1,6 @@
-# runpod/pytorch is pre-cached on all RunPod nodes - image pull is near-instant.
-# Base: Python 3.11, CUDA 12.4. PyTorch 2.6.0 is installed via pip below
-# (the closest base tag ships 2.4.0; diffusers>=0.36 requires torch>=2.6.0).
-FROM runpod/pytorch:2.4.0-py3.11-cuda12.4.1-devel-ubuntu22.04
+# Use NVIDIA's official PyTorch 25.01 container
+# This natively includes PyTorch 2.6.0, CUDA 12.8, and full Blackwell (sm_120) support out-of-the-box.
+FROM nvcr.io/nvidia/pytorch:25.01-py3
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
@@ -12,14 +11,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 WORKDIR /app
 COPY requirements.txt .
-# Step 1: forcibly upgrade torch BEFORE anything else so the base image's
-# older torch 2.4.0 cannot shadow the 2.6.0 wheel that diffusers>=0.36 needs.
-RUN pip install --no-cache-dir --upgrade --pre \
-    torch \
-    torchvision \
-    torchaudio \
-    --index-url https://download.pytorch.org/whl/nightly/cu126
-# Step 2: install the rest of the dependencies.
+
+# Step 1: Install the requirements (torch is already 2.6.0 in this base image)
 RUN pip install --no-cache-dir -r requirements.txt
 
 ENV U2NET_HOME=/opt/u2net
