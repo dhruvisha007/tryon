@@ -14,11 +14,11 @@ WORKDIR /app
 COPY requirements.txt .
 # Step 1: forcibly upgrade torch BEFORE anything else so the base image's
 # older torch 2.4.0 cannot shadow the 2.6.0 wheel that diffusers>=0.36 needs.
-RUN pip install --no-cache-dir --upgrade \
-    torch==2.6.0+cu124 \
-    torchvision==0.21.0+cu124 \
-    torchaudio==2.6.0+cu124 \
-    --extra-index-url https://download.pytorch.org/whl/cu124
+RUN pip install --no-cache-dir --upgrade --pre \
+    torch \
+    torchvision \
+    torchaudio \
+    --index-url https://download.pytorch.org/whl/nightly/cu124
 # Step 2: install the rest of the dependencies.
 RUN pip install --no-cache-dir -r requirements.txt
 
