@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir --upgrade --pre \
     torch \
     torchvision \
     torchaudio \
-    --index-url https://download.pytorch.org/whl/nightly/cu128
+    --index-url https://download.pytorch.org/whl/nightly/cu126
 # Step 2: install the rest of the dependencies.
 RUN pip install --no-cache-dir -r requirements.txt
 
