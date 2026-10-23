@@ -1,0 +1,68 @@
+name: build fp8-comfy worker image (models baked in)
+
+# Builds fp8-comfy/Dockerfile and pushes it to the already-public tryon-worker package on
+# GHCR under the fp8-comfy tag, so RunPod pulls it with no registry credentials.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'fp8-comfy/**'
+      - '.github/workflows/build-fp8-comfy.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ~32 GB of model files plus a ~10 GB base image do not fit the runner's root disk.
+      # Build an LVM volume across the root + temp disks and put Docker's data root on it.
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@v10
+        with:
+          root-reserve-mb: 24576
+          temp-reserve-mb: 1024
+          swap-size-mb: 1024
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
+          build-mount-path: /var/lib/docker
+
+      - name: Restart Docker on the big volume
+        run: |
+          sudo service docker restart
+          sleep 5
+          docker info --format '{{.DockerRootDir}}'
+          df -h / /var/lib/docker
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: fp8-comfy
+          push: true
+          provenance: false
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/tryon-worker:fp8-comfy
+            ghcr.io/${{ github.repository_owner }}/tryon-worker:fp8-comfy-${{ github.sha }}
+
+      - name: Report
+        run: |
+          echo "pushed ghcr.io/${{ github.repository_owner }}/tryon-worker:fp8-comfy" >> $GITHUB_STEP_SUMMARY
+          df -h / /var/lib/docker

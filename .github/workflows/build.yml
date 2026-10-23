@@ -3,6 +3,12 @@ name: build worker image
 on:
   push:
     branches: [main]
+    # the fp8-comfy worker has its own workflow (build-fp8-comfy.yml)
+    paths-ignore:
+      - "fp8-comfy/**"
+      - ".github/workflows/build-fp8-comfy.yml"
+      # edits to this file: run it manually (workflow_dispatch) instead of rebuilding on every push
+      - ".github/workflows/build.yml"
   workflow_dispatch:
 
 jobs:
